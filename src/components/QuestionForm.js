@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 function QuestionForm(props) {
   const [formData, setFormData] = useState({
@@ -10,6 +10,16 @@ function QuestionForm(props) {
     correctIndex: 0,
   });
 
+  // Use a ref to track whether the component is mounted
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   function handleChange(event) {
     setFormData({
       ...formData,
@@ -19,7 +29,46 @@ function QuestionForm(props) {
 
   function handleSubmit(event) {
     event.preventDefault();
-    console.log(formData);
+
+    const newQuestion = {
+      prompt: formData.prompt,
+      answers: [
+        formData.answer1,
+        formData.answer2,
+        formData.answer3,
+        formData.answer4,
+      ],
+      correctIndex: parseInt(formData.correctIndex),
+    };
+
+    fetch("http://localhost:4000/questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newQuestion),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (isMounted.current) {
+          props.onAddQuestion(data);
+
+          // Clear form after submit
+          setFormData({
+            prompt: "",
+            answer1: "",
+            answer2: "",
+            answer3: "",
+            answer4: "",
+            correctIndex: 0,
+          });
+        }
+      })
+      .catch((err) => {
+        if (isMounted.current) {
+          console.error("Failed to submit new question:", err);
+        }
+      });
   }
 
   return (
